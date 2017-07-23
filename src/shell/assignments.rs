@@ -16,14 +16,18 @@ use types::{
     Identifier,
     Value as VString,
     Array as VArray,
+    Key,
+    HashMap,
     ArrayVariableContext,
-    VariableContext
+    VariableContext,
 };
 use super::status::*;
 
 enum Action {
     UpdateString(Identifier, VString),
     UpdateStrings(Vec<Identifier>, VArray),
+    UpdateHashMap(Identifier, Key, VString),
+    UpdateHashMaps(Vec<Identifier>, HashMap),
     UpdateArray(Identifier, VArray),
     List
 }
@@ -77,7 +81,11 @@ fn parse_assignment (
         },
         Binding::KeyValue(key, value) => match parse_expression(&value, &expanders) {
             Value::String(value) => Ok(Action::UpdateString(key, value)),
-            Value::Array(array)  => Ok(Action::UpdateArray(key, array)),
+            Value::Array(array) => Ok(Action::UpdateArray(key, array)),
+            Value::HashMap(hash_map) => Ok(Action::List),
+        },
+        Binding::MapKeyValue(key, inner_key, value) => {
+            Ok(Action::UpdateHashMap(key, inner_key, value))
         },
         Binding::MultipleKeys(keys, value) => match parse_expression(&value, &expanders) {
             Value::String(value) => {
@@ -85,7 +93,8 @@ fn parse_assignment (
                     .collect::<VArray>();
                 Ok(Action::UpdateStrings(keys, array))
             },
-            Value::Array(array)  => Ok(Action::UpdateStrings(keys, array))
+            Value::Array(array)  => Ok(Action::UpdateStrings(keys, array)),
+            Value::HashMap(hash_map) => Ok(Action::List),
         },
         Binding::KeyOnly(key) => {
             let stderr = io::stderr();
@@ -121,6 +130,11 @@ fn parse_assignment (
                     let _ = writeln!(stderr.lock(), "ion: array math not supported yet");
                     Err(FAILURE)
                 }
+                Value::HashMap(_) => {
+                    let stderr = io::stderr();
+                    let _ = writeln!(stderr.lock(), "ion: hash_map math not supported yet");
+                    Err(FAILURE)
+                },
             }
         },
     }
@@ -134,6 +148,11 @@ pub fn let_assignment(binding: Binding, vars: &mut Variables, dir_stack: &Direct
             for (key, value) in keys.iter().zip(array.iter()) {
                 vars.set_var(key, value);
             }
+        },
+        Ok(Action::UpdateHashMap(key, inner_key, value)) => {
+            vars.set_hashmap_value(&key, &inner_key, &value)
+        },
+        Ok(Action::UpdateHashMaps(keys, hash_map)) => {
         },
         Ok(Action::List) => {
             print_vars(&vars.variables);
@@ -156,6 +175,10 @@ pub fn export_variable(binding : Binding, vars: &mut Variables, dir_stack : &Dir
                 env::set_var(key, value);
             }
         }
+        Ok(Action::UpdateHashMap(key, inner_key, hash_map)) => {
+        },
+        Ok(Action::UpdateHashMaps(keys, hash_map)) => {
+        },
         Ok(Action::List) => {
             let stdout = io::stdout();
             let stdout = &mut stdout.lock();

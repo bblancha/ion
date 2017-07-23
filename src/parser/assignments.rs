@@ -1,11 +1,12 @@
 use shell::variables::Variables;
-use types::{Identifier, Value as VString, Array};
+use types::{Identifier, Value as VString, Array, Key, HashMap};
 
 #[derive(Debug, PartialEq, Clone)]
 // TODO: Have the expand_string function return the `Value` type.
 pub enum Value {
     String(VString),
-    Array(Array)
+    Array(Array),
+    HashMap(HashMap),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -14,6 +15,7 @@ pub enum Binding {
     ListEntries,
     KeyOnly(Identifier),
     KeyValue(Identifier, VString),
+    MapKeyValue(Identifier, Key, VString),
     Math(Identifier, Operator, VString),
     MultipleKeys(Vec<Identifier>, VString)
 }
@@ -96,6 +98,7 @@ pub fn parse_assignment(arguments: &str) -> Binding {
         Binding::ListEntries
     } else if keys.len() > 1 {
         for key in &keys {
+            println!("multiplekey: {:?}", key);
             if !Variables::is_valid_variable_name(&key) {
                 return Binding::InvalidKey(key.clone());
             }
@@ -106,8 +109,11 @@ pub fn parse_assignment(arguments: &str) -> Binding {
     } else {
         let key = keys.drain(..).next().unwrap();
         let value = char_iter.skip_while(|&x| x == ' ').collect::<VString>();
+        println!("key: {:?}", key);
         if value.is_empty() {
             Binding::KeyOnly(key.into())
+        } else if let Some((key, inner_key)) = Variables::is_hashmap_reference(&key) {
+            Binding::MapKeyValue(key.into(), inner_key.into(), value)
         } else if !Variables::is_valid_variable_name(&key) {
             Binding::InvalidKey(key.into())
         } else {
