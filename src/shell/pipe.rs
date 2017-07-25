@@ -345,3 +345,29 @@ fn get_full_command(command: &Command) -> String {
     }
     output
 }
+
+#[cfg(test)]
+mod tests {
+    use shell::{Job, JobKind};
+    use types::*;
+    use parser::peg::Pipeline;
+    use super::check_if_background_job;
+
+    #[test]
+    fn single_job() {
+        let foreground_job = Job::new(array!["true"], JobKind::Last);
+
+        let mut pipe = Pipeline::new(vec![foreground_job], None, None);
+        assert!(check_if_background_job(&mut pipe, false).is_none());
+    }
+
+    #[test]
+    fn background_job() {
+        let background_job = Job::new(array!["true"], JobKind::Background);
+
+        let mut pipe = Pipeline::new(vec![background_job], None, None);
+        let result = check_if_background_job(&mut pipe, false);
+        assert!(result.is_some());
+        assert!(result.unwrap_or("".into()) == "true &");
+    }
+}
