@@ -45,6 +45,7 @@ pub trait FlowLogic {
 
 impl<'a> FlowLogic for Shell<'a> {
     fn on_command(&mut self, command_string: &str) {
+        println!("on_command: {}", command_string);
         self.break_flow = false;
         let mut iterator = StatementSplitter::new(command_string).map(check_statement);
 
@@ -399,6 +400,7 @@ impl<'a> FlowLogic for Shell<'a> {
     fn execute_toplevel<I>(&mut self, iterator: &mut I, statement: Statement) -> Result<(), &'static str>
         where I: Iterator<Item = Statement>
     {
+        println!("execute_toplevel {:?}", statement);
         match statement {
             Statement::Error(number) => self.previous_status = number,
             // Execute a Let Statement
@@ -538,4 +540,9 @@ impl<'a> FlowLogic for Shell<'a> {
         }
         Ok(())
     }
+}
+
+#[test]
+fn test_execute_toplevel() {
+    //fn execute_toplevel<I>(&mut self, iterator: &mut I, statement: Statement) -> Result<(), &'static str>
 }

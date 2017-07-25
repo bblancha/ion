@@ -400,3 +400,11 @@ fn braced_variables() {
     assert_eq!(results.len(), 1);
     assert_eq!(results, vec![Ok(command)]);
 }
+
+#[test]
+fn ignore_ampersands() {
+    let command = "echo wow && echo yeah";
+    let results = StatementSplitter::new(command).collect::<Vec<Result<&str, StatementError>>>();
+    assert_eq!(results.len(), 1);
+    assert_eq!(results, vec![Ok(command)]);
+}
